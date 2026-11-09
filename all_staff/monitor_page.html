@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>訓練監控</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7;--surface:#fcfcfb;--raised:#f0efec;--ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
+  --grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);
+  --series:#2a78d6;--series-soft:rgba(42,120,214,.28);
+  --good:#0ca30c;--good-text:#006300;--warning:#fab219;--critical:#d03b3b;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 14px rgba(16,24,40,.05);
+}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--raised:#242422;--ink:#ffffff;--ink-2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);
+  --series:#3987e5;--series-soft:rgba(57,135,229,.30);--good-text:#0ca30c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--raised:#242422;--ink:#ffffff;--ink-2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);
+  --series:#3987e5;--series-soft:rgba(57,135,229,.30);--good-text:#0ca30c;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"PingFang TC","Noto Sans TC","Segoe UI",sans-serif}
+button{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--ring)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:12px 20px;max-width:1280px;margin:0 auto}
+h1{font-size:16px;margin:0;font-weight:700}
+.muted{color:var(--muted)}.ink2{color:var(--ink-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;font-weight:600;font-size:13px;background:var(--raised)}
+.pill .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.pill.running .dot{background:var(--series);animation:pulse 1.6s ease-in-out infinite}
+.pill.complete .dot{background:var(--good)}.pill.failed .dot{background:var(--critical)}.pill.stopped .dot{background:var(--warning)}
+@keyframes pulse{50%{opacity:.35}}
+.spacer{flex:1}
+.btn{border:1px solid var(--ring);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--series)}
+.btn.danger{color:var(--critical);border-color:color-mix(in srgb,var(--critical) 45%,transparent)}
+.btn:disabled{opacity:.5;cursor:default}
+main{max-width:1280px;margin:0 auto;padding:18px 20px 60px}
+.detail{margin:0 0 14px;color:var(--ink-2)}
+.banner{border-radius:10px;padding:12px 16px;margin:0 0 16px;border:1px solid var(--ring);background:var(--surface);box-shadow:var(--shadow)}
+.banner b{margin-right:6px}
+.banner code{background:var(--raised);border-radius:5px;padding:1px 6px;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);min-width:0}
+.tile .label{font-size:12px;color:var(--ink-2)}
+.tile .value{font-size:26px;font-weight:700;line-height:1.25;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meter{height:6px;border-radius:3px;background:var(--raised);overflow:hidden;margin-top:8px}
+.meter span{display:block;height:100%;border-radius:3px;background:var(--series);transition:width .6s}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:12px 14px 8px;box-shadow:var(--shadow);min-width:0}
+.card h2{font-size:14px;margin:0;font-weight:650}
+.card .note{font-size:12px;color:var(--muted);margin:2px 0 4px}
+.chart{position:relative;width:100%;height:240px}
+.chart.small{height:190px}
+.chart svg{display:block;width:100%;height:100%;overflow:visible}
+.tick{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--ring);border-radius:8px;padding:6px 9px;font-size:12px;box-shadow:var(--shadow);white-space:nowrap;display:none;z-index:2}
+.tip .v{font-weight:700;font-size:13px;color:var(--ink)}
+.tip .k{display:inline-block;width:12px;height:0;border-top:2px solid var(--series);vertical-align:middle;margin-right:5px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid);font-size:13px}
+th{color:var(--ink-2);font-weight:600}
+td.num,th.num{text-align:right}
+tr.best td{font-weight:700}
+.scroll{max-height:320px;overflow:auto}
+.errs{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;display:grid;grid-template-columns:auto auto 1fr;gap:3px 12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv span:nth-child(odd){color:var(--ink-2)}
+.empty{color:var(--muted);padding:18px 0;text-align:center}
+@media (max-width:1000px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:1fr}}
+@media (max-width:560px){.bar,main{padding-left:16px;padding-right:16px}.tile .value{font-size:22px}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <h1>Line recognizer 訓練監控</h1>
+  <span id="status" class="pill"><span class="dot"></span><span>連線中</span></span>
+  <span id="updated" class="muted" style="font-size:12px"></span>
+  <span class="spacer"></span>
+  <button id="stop" class="btn danger" hidden>停止訓練</button>
+  <button id="theme" class="btn" title="切換深淺色" aria-label="切換深淺色">◐</button>
+</div></header>
+<main>
+  <p id="detail" class="detail"></p>
+  <div id="banner"></div>
+  <section class="tiles" id="tiles"></section>
+  <section class="card" style="margin-bottom:12px">
+    <h2>訓練 loss（CTC）</h2><p class="note">每一步的 loss（淡色）與平滑後趨勢（實線），對數尺度；虛線為階段分界</p>
+    <div class="chart" id="lossChart"></div>
+  </section>
+  <section class="grid2">
+    <div class="card"><h2>驗證正確率（整行完全正確）</h2><p class="note">每輪結束時在 val 文字行上計算；空心圈為目前最佳（會存成 checkpoint）</p><div class="chart small" id="valChart"></div></div>
+    <div class="card"><h2>學習率</h2><p class="note">每個階段各自一個 OneCycle 排程</p><div class="chart small" id="lrChart"></div></div>
+  </section>
+  <section class="grid2">
+    <div class="card"><h2>每輪紀錄</h2><div class="scroll" id="table"></div></div>
+    <div class="card"><h2>最近一次驗證的錯誤（最多 20 筆）</h2><p class="note">正確答案 → 模型輸出（信心）；空白表示該行不該讀出任何代號</p><div class="scroll" id="errors"></div></div>
+  </section>
+  <section class="card"><h2>設定與資料</h2><div id="config" class="kv" style="padding:6px 0 8px"></div></section>
+</main>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const STAGE = {pretrain: '合成預訓練', finetune: '真實資料微調'};
+const STATUS = {waiting: '等待中', preparing: '準備資料', running: '訓練中', complete: '完成', stopped: '已停止', failed: '失敗', offline: '監控中斷'};
+let last = null, lastOk = Date.now(), timer = null;
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const pct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+function dur(s) {
+  if (s == null || !isFinite(s)) return '—';
+  s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return h ? `${h} 小時 ${m} 分` : m ? `${m} 分 ${String(sec).padStart(2, '0')} 秒` : `${sec} 秒`;
+}
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/* ---------- a small SVG line chart with crosshair tooltip ---------- */
+function lineChart(el, opt) {
+  const W = el.clientWidth, H = el.clientHeight, m = {l: 48, r: 14, t: 10, b: 24};
+  const iw = Math.max(10, W - m.l - m.r), ih = Math.max(10, H - m.t - m.b);
+  const all = opt.series.flatMap(s => s.points);
+  if (!all.length) { el.innerHTML = '<div class="empty">尚無資料</div>'; return; }
+  const [x0, x1] = opt.xDomain || [Math.min(...all.map(p => p[0])), Math.max(...all.map(p => p[0]))];
+  let [y0, y1] = opt.yDomain || [Math.min(...all.map(p => p[1])), Math.max(...all.map(p => p[1]))];
+  const log = !!opt.yLog;
+  if (log) { y0 = Math.max(1e-4, y0); y1 = Math.max(y0 * 1.5, y1); }
+  if (!log && y0 === y1) { y0 -= 1; y1 += 1; }
+  const ty = v => log ? Math.log10(Math.max(v, 1e-4)) : v;
+  const Y0 = ty(y0), Y1 = ty(y1);
+  const sx = x => m.l + (x1 === x0 ? iw / 2 : (x - x0) / (x1 - x0) * iw);
+  const sy = y => m.t + ih - (ty(y) - Y0) / (Y1 - Y0 || 1) * ih;
+  let ticks;
+  if (log) { ticks = []; for (let e = Math.floor(Y0); e <= Math.ceil(Y1); e++) for (const k of [1, 2, 5]) { const v = k * 10 ** e; if (v >= y0 * .999 && v <= y1 * 1.001) ticks.push(v); } }
+  else { const n = 4, step = (y1 - y0) / n; ticks = Array.from({length: n + 1}, (_, i) => y0 + i * step); }
+  const grid = ticks.map(v => `<line x1="${m.l}" x2="${m.l + iw}" y1="${sy(v)}" y2="${sy(v)}" stroke="${css('--grid')}" stroke-width="1"/><text class="tick" x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end">${opt.yFormat(v)}</text>`).join('');
+  const xt = (opt.xTicks || [x0, (x0 + x1) / 2, x1]).map(v => `<text class="tick" x="${sx(v)}" y="${m.t + ih + 17}" text-anchor="middle">${opt.xFormat(v)}</text>`).join('');
+  const stages = (opt.marks || []).map(k => `<line x1="${sx(k.x)}" x2="${sx(k.x)}" y1="${m.t}" y2="${m.t + ih}" stroke="${css('--axis')}" stroke-dasharray="4 4"/><text class="tick" x="${sx(k.x) + 5}" y="${m.t + 11}">${esc(k.label)}</text>`).join('');
+  const paths = opt.series.map(s => {
+    if (!s.points.length) return '';
+    const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join('');
+    const dots = s.markers ? s.points.map(p => `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4" fill="${s.color}" stroke="${css('--surface')}" stroke-width="2"/>`).join('') : '';
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2}" stroke-linejoin="round" stroke-linecap="round" opacity="${s.opacity ?? 1}"/>${dots}`;
+  }).join('');
+  const ring = opt.highlight ? `<circle cx="${sx(opt.highlight[0])}" cy="${sy(opt.highlight[1])}" r="8" fill="none" stroke="${css('--series')}" stroke-width="2"/>` : '';
+  const labels = (opt.labels || []).map(l => `<text class="tick" x="${Math.min(sx(l.x) + 6, m.l + iw - 4)}" y="${sy(l.y) - 8}" text-anchor="${sx(l.x) + 60 > m.l + iw ? 'end' : 'start'}" style="fill:${css('--ink-2')}">${esc(l.text)}</text>`).join('');
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.aria)}"><line x1="${m.l}" x2="${m.l + iw}" y1="${m.t + ih}" y2="${m.t + ih}" stroke="${css('--axis')}"/>${grid}${xt}${stages}${paths}${ring}${labels}<line class="cross" y1="${m.t}" y2="${m.t + ih}" stroke="${css('--muted')}" stroke-width="1" visibility="hidden"/><rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg><div class="tip"></div>`;
+  const svg = el.querySelector('svg'), cross = el.querySelector('.cross'), tip = el.querySelector('.tip'), hit = el.querySelector('rect');
+  const main = opt.series[opt.hoverSeries ?? opt.series.length - 1].points;
+  const show = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const x = x0 + (px - m.l) / iw * (x1 - x0);
+    let best = main[0]; for (const p of main) if (Math.abs(p[0] - x) < Math.abs(best[0] - x)) best = p;
+    cross.setAttribute('x1', sx(best[0])); cross.setAttribute('x2', sx(best[0])); cross.setAttribute('visibility', 'visible');
+    tip.innerHTML = opt.tooltip(best); tip.style.display = 'block';
+    const left = sx(best[0]) * r.width / W + 12;
+    tip.style.left = Math.min(left, r.width - tip.offsetWidth - 4) + 'px'; tip.style.top = '6px';
+  };
+  hit.addEventListener('pointermove', ev => { el._hover = {clientX: ev.clientX}; show(ev); });
+  hit.addEventListener('pointerleave', () => { el._hover = null; cross.setAttribute('visibility', 'hidden'); tip.style.display = 'none'; });
+  if (el._hover) show(el._hover);  // the page re-renders every 2 s: keep the readout under the pointer
+}
+
+function smoothed(points) {
+  // centred moving average in log space: follows fast drops without the lag of an EMA
+  const n = points.length, w = Math.max(2, Math.min(60, Math.round(n / 70)));
+  const logs = points.map(p => Math.log(Math.max(p[1], 1e-6))), pre = [0];
+  for (const v of logs) pre.push(pre[pre.length - 1] + v);
+  return points.map((p, i) => { const a = Math.max(0, i - w), b = Math.min(n, i + w + 1); return [p[0], Math.exp((pre[b] - pre[a]) / (b - a))]; });
+}
+
+/* ---------- rendering ---------- */
+function render(d) {
+  last = d;
+  const status = d.status || 'waiting', p = d.progress || {};
+  const pill = $('#status'); pill.className = 'pill ' + status;
+  pill.lastElementChild.textContent = STATUS[status] || status;
+  $('#detail').textContent = d.detail ? `${d.detail}${d.device ? '　·　裝置 ' + d.device : ''}` : '';
+  const stop = $('#stop');
+  stop.hidden = !['running', 'preparing'].includes(status);
+  if (d.stop_requested) { stop.disabled = true; stop.textContent = '已要求停止，完成目前這一步後結束'; }
+
+  // banner
+  let banner = '';
+  if (status === 'complete' || status === 'stopped') {
+    const ok = d.reload_consistent;
+    banner = `<div class="banner"><b>${status === 'complete' ? '訓練完成' : '已停止，最佳模型已保留'}</b>`
+      + `最佳 val ${pct(d.best?.val_exact)}（${STAGE[d.best?.stage] || ''} 第 ${d.best?.epoch ?? '—'} 輪），總時間 ${d.minutes ?? '—'} 分鐘。`
+      + (ok === undefined ? '' : ok ? ` <span style="color:var(--good-text)">✓ CPU 重新載入驗證一致（${pct(d.reload_val_exact)}）</span>`
+                                     : ` <span style="color:var(--critical)">⚠ CPU 重新載入後為 ${pct(d.reload_val_exact)}，與訓練時不一致，請改用 CPU 重訓</span>`)
+      + `<br><span class="ink2">使用：</span><code>python -m all_staff.cli demo --recognizer ${esc(d.output || '')}</code></div>`;
+  } else if (status === 'failed') {
+    banner = `<div class="banner" style="border-color:var(--critical)"><b style="color:var(--critical)">⚠ 訓練失敗</b>${esc(d.error || '')}</div>`;
+  } else if (status === 'offline') {
+    banner = `<div class="banner"><b>⚠ 監控伺服器沒有回應</b>訓練程式可能已結束；以下為最後一次收到的狀態。可用 <code>python -m all_staff.cli monitor --run 進度檔</code> 重新開啟。</div>`;
+  }
+  $('#banner').innerHTML = banner;
+
+  // tiles
+  const overall = p.total_steps ? p.global_step / p.total_steps : (status === 'complete' ? 1 : 0);
+  const best = d.best;
+  const tiles = [
+    ['整體進度', status === 'complete' ? '100%' : (overall * 100).toFixed(1) + '%', p.total_steps ? `第 ${p.global_step} / ${p.total_steps} 步` : (d.detail || ''), overall],
+    ['預估剩餘', ['running'].includes(status) ? dur(p.eta_s) : '—', `已經過 ${dur(p.elapsed_s ?? (d.updated_at - d.started_at))}`],
+    ['目前階段', p.stage ? STAGE[p.stage] : '—', p.stage ? `第 ${p.epoch}/${p.epochs} 輪 · ${p.step}/${p.steps} 步` : ''],
+    ['最佳驗證正確率', best ? pct(best.val_exact) : '—', best ? `${STAGE[best.stage]} 第 ${best.epoch} 輪` : '每輪結束後計算'],
+    ['速度', p.samples_per_s ? Math.round(p.samples_per_s) + ' 行/秒' : '—', p.loss != null ? `目前 loss ${p.loss.toFixed(3)} · lr ${p.lr?.toExponential(1)}` : ''],
+  ];
+  $('#tiles').innerHTML = tiles.map(([label, value, sub, meter]) => `<div class="tile"><div class="label">${label}</div><div class="value">${esc(value)}</div><div class="sub">${esc(sub)}</div>${meter != null ? `<div class="meter"><span style="width:${(meter * 100).toFixed(1)}%"></span></div>` : ''}</div>`).join('');
+
+  // charts
+  const curve = d.loss_curve || [];
+  const total = p.total_steps || (d.stages?.length ? d.stages[d.stages.length - 1].end : null);
+  const xDomain = [0, Math.max(1, total || (curve.length ? curve[curve.length - 1][0] : 1))];
+  const marks = (d.stages || []).slice(1).map(s => ({x: s.start, label: STAGE[s.name] || s.name}));
+  const raw = curve.map(c => [c[0], c[1]]);
+  const smooth = smoothed(raw);
+  const stepFmt = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'k' : Math.round(v);
+  const lossVals = raw.map(r => r[1]).filter(v => v > 0);
+  const lo = lossVals.length ? Math.min(...smooth.map(s => s[1]), ...lossVals.slice(-200)) : .01;
+  lineChart($('#lossChart'), {
+    series: [{points: raw, color: css('--series'), width: 1, opacity: .28}, {points: smooth, color: css('--series'), width: 2}],
+    yLog: true, yDomain: [Math.max(1e-3, lo * .8), lossVals.length ? Math.max(...lossVals) : 1], xDomain, marks,
+    yFormat: v => v >= 1 ? v.toFixed(0) : v >= .1 ? v.toFixed(1) : v.toFixed(2), xFormat: stepFmt,
+    xTicks: [0, xDomain[1] / 4, xDomain[1] / 2, xDomain[1] * 3 / 4, xDomain[1]],
+    labels: smooth.length ? [{x: smooth[smooth.length - 1][0], y: smooth[smooth.length - 1][1], text: '平滑'}] : [],
+    aria: '訓練 loss 曲線', hoverSeries: 1,
+    tooltip: q => { const r = raw.find(x => x[0] === q[0]); return `<div class="v">${q[1].toFixed(4)}</div><div><span class="k"></span>平滑 loss · 第 ${q[0]} 步</div>${r ? `<div class="muted">該步原始 ${r[1].toFixed(4)}</div>` : ''}`; },
+  });
+  const hist = d.history || [];
+  const pts = hist.map(h => [h.global_step, h.val_exact]);
+  const bestPt = best ? [best.global_step, best.val_exact] : null;
+  lineChart($('#valChart'), {
+    series: [{points: pts, color: css('--series'), width: 2, markers: true}], xDomain, marks,
+    yDomain: [Math.max(0, Math.min(.5, ...pts.map(q => q[1])) - .05), 1],
+    yFormat: v => Math.round(v * 100) + '%', xFormat: stepFmt, xTicks: [0, xDomain[1] / 2, xDomain[1]],
+    highlight: bestPt, labels: bestPt ? [{x: bestPt[0], y: bestPt[1], text: '最佳 ' + pct(bestPt[1])}] : [],
+    aria: '驗證正確率',
+    tooltip: q => { const h = hist.find(x => x.global_step === q[0]); return `<div class="v">${pct(q[1])}</div><div><span class="k"></span>${STAGE[h?.stage] || ''} 第 ${h?.epoch} 輪</div><div class="muted">loss ${h?.loss.toFixed(4)} · ${h?.seconds}s</div>`; },
+  });
+  const lr = curve.map(c => [c[0], c[2]]);
+  lineChart($('#lrChart'), {
+    series: [{points: lr, color: css('--series'), width: 2}], xDomain, marks,
+    yDomain: [0, lr.length ? Math.max(...lr.map(q => q[1])) * 1.05 : 1e-3],
+    yFormat: v => v === 0 ? '0' : v.toExponential(0), xFormat: stepFmt, xTicks: [0, xDomain[1] / 2, xDomain[1]],
+    aria: '學習率', tooltip: q => `<div class="v">${q[1].toExponential(2)}</div><div><span class="k"></span>學習率 · 第 ${q[0]} 步</div>`,
+  });
+
+  // epoch table
+  $('#table').innerHTML = hist.length ? `<table><thead><tr><th>階段</th><th class="num">輪</th><th class="num">train loss</th><th class="num">val 正確率</th><th class="num">耗時</th></tr></thead><tbody>${
+    hist.slice().reverse().map(h => `<tr class="${best && h.global_step === best.global_step ? 'best' : ''}"><td>${STAGE[h.stage] || esc(h.stage)}</td><td class="num">${h.epoch}</td><td class="num">${h.loss.toFixed(4)}</td><td class="num">${pct(h.val_exact)}${best && h.global_step === best.global_step ? ' ★' : ''}</td><td class="num">${dur(h.seconds)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">第一輪結束後出現</div>';
+  const errors = d.val_errors || [];
+  $('#errors').innerHTML = errors.length ? `<div class="errs">${errors.map(([exp, got, conf]) => `<span>${esc(exp || '（空白）')}</span><span class="muted">→ ${esc(got || '（空白）')}</span><span class="muted">${conf != null ? (conf * 100).toFixed(0) + '%' : ''}</span>`).join('')}</div>` : `<div class="empty">${hist.length ? '沒有錯誤' : '第一輪結束後出現'}</div>`;
+
+  // config
+  const c = d.config || {}, data = d.data || {};
+  const rows = [
+    ['進度檔', d.run_file], ['輸出模型', d.output], ['資料集', d.dataset], ['裝置', `${d.device || '—'}${d.threads ? `（${d.threads} threads）` : ''}`],
+    ['合成樣本／輪', c.synth_samples], ['輪數', c.pretrain_epochs != null ? `預訓練 ${c.pretrain_epochs} ＋ 微調 ${c.finetune_epochs}` : null],
+    ['batch／workers', c.batch_size != null ? `${c.batch_size} / ${c.workers}` : null], ['學習率', c.learning_rate],
+    ['起始權重', c.init || '從頭訓練'], ['真實文字行', data.train_lines != null ? `train ${data.train_lines}（人工框 ${data.train_kinds?.truth}、切分 ${data.train_kinds?.segment}、負樣本 ${data.train_kinds?.negative}）· val ${data.val_lines}` : null],
+  ].filter(r => r[1] != null && r[1] !== '');
+  $('#config').innerHTML = rows.map(([k, v]) => `<span>${k}</span><span>${esc(v)}</span>`).join('');
+  document.title = status === 'running' ? `${(overall * 100).toFixed(0)}% · 訓練監控` : `${STATUS[status] || status} · 訓練監控`;
+}
+
+function tickUpdated() {
+  if (!last?.updated_at) { $('#updated').textContent = ''; return; }
+  const ago = Date.now() / 1000 - last.updated_at;
+  $('#updated').textContent = ago < 5 ? '剛剛更新' : `${dur(ago)}前更新`;
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/status', {cache: 'no-store'});
+    const d = await res.json(); lastOk = Date.now(); render(d);
+  } catch (e) {
+    if (last && Date.now() - lastOk > 6000) render({...last, status: last.status === 'complete' ? 'complete' : 'offline'});
+  }
+  const done = ['complete', 'failed', 'stopped'].includes(last?.status);
+  timer = setTimeout(poll, done ? 10000 : 2000);
+}
+
+$('#stop').onclick = async ev => {
+  const b = ev.currentTarget;
+  if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = '確定停止？再按一次'; setTimeout(() => { if (!b.disabled) { b.dataset.armed = ''; b.textContent = '停止訓練'; } }, 4000); return; }
+  b.disabled = true; b.textContent = '已要求停止…';
+  try { await fetch('/api/stop', {method: 'POST'}); } catch (e) {}
+};
+$('#theme').onclick = () => { const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; if (last) render(last); };
+let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => last && render(last), 150); }).observe(document.body);
+setInterval(tickUpdated, 1000);
+poll();
+})();
+</script>
+</body>
+</html>

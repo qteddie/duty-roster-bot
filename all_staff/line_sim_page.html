@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LINE 模擬器</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#eef0f3;--panel:#ffffff;--raised:#f3f4f6;--line:#e2e4e8;--ink:#111418;--ink-2:#4b5563;--muted:#8a8f98;
+  --chat-bg:#8cabd9;--bubble:#ffffff;--mine:#8de055;--mine-ink:#0b0f0a;--accent:#06c755;--accent-ink:#ffffff;--link:#1d4ed8;
+  --warn:#b45309;--danger:#c53030;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --page:#0f1115;--panel:#171a1f;--raised:#20242b;--line:#2b3038;--ink:#eef1f5;--ink-2:#b7bec9;--muted:#8a919c;
+  --chat-bg:#1d2633;--bubble:#2a303a;--mine:#3f8f2a;--mine-ink:#f2fff0;--link:#8ab4ff;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0f1115;--panel:#171a1f;--raised:#20242b;--line:#2b3038;--ink:#eef1f5;--ink-2:#b7bec9;--muted:#8a919c;
+  --chat-bg:#1d2633;--bubble:#2a303a;--mine:#3f8f2a;--mine-ink:#f2fff0;--link:#8ab4ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--page);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"PingFang TC","Noto Sans TC",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:280px minmax(0,1fr) 380px;height:100vh}
+.app.nodev{grid-template-columns:280px minmax(0,1fr)}
+.app.nodev .dev{display:none}
+aside.side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side .top{padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+.side h1{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}
+label.small{font-size:12px;color:var(--ink-2);display:block;margin-bottom:4px}
+select,input[type=text]{width:100%;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.me{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:12px;background:var(--raised);color:var(--ink-2)}
+.chip.ok{background:color-mix(in srgb,var(--accent) 16%,transparent);color:color-mix(in srgb,var(--accent) 70%,var(--ink))}
+.chats{flex:1;overflow:auto;padding:6px}
+.chatitem{display:flex;gap:10px;align-items:center;padding:9px 8px;border-radius:10px;cursor:pointer;border:0;background:none;width:100%;text-align:left}
+.chatitem:hover{background:var(--raised)}.chatitem.active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none;font-size:14px}
+.chatitem .t{min-width:0;flex:1}.chatitem .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chatitem .p{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{background:var(--accent);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;font-weight:700}
+.side .bottom{border-top:1px solid var(--line);padding:10px 12px;display:grid;gap:6px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.btn:hover{border-color:var(--accent)}.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.ghost{background:transparent}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+main.chat{display:flex;flex-direction:column;min-height:0;background:var(--chat-bg)}
+.chat header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:10px}
+.chat header .n{font-weight:700}.chat header .m{font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+.msgs{flex:1;overflow:auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:10px}
+.msg{display:flex;gap:8px;align-items:flex-end;max-width:100%}
+.msg.mine{flex-direction:row-reverse}
+.msg .avatar{width:32px;height:32px;font-size:12px;align-self:flex-start}
+.msg .col{display:flex;flex-direction:column;max-width:min(78%,520px);min-width:0}
+.msg .col:has(.bubble.flex){max-width:min(100%,560px)}
+.msg.mine .col{align-items:flex-end}
+.msg .who{font-size:12px;color:color-mix(in srgb,var(--ink) 75%,transparent);margin:0 0 3px 2px}
+.bubble{background:var(--bubble);border-radius:16px;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+.msg.mine .bubble{background:var(--mine);color:var(--mine-ink)}
+.bubble a{color:var(--link)}
+.bubble.img{padding:4px;background:transparent;box-shadow:none}
+.bubble.flex{white-space:normal;max-width:100%;padding:0;overflow:hidden;background:#fff;color:#1b2430}
+.bubble.flex:has(>.flex-carousel){background:transparent;box-shadow:none;border-radius:0;overflow:visible}
+.flex-bubble{display:flex;flex-direction:column;width:var(--w,300px);max-width:100%;background:#fff;color:#1b2430}
+.flex-carousel{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;align-items:stretch;padding-bottom:6px}
+.flex-carousel>.flex-bubble{flex:0 0 min(var(--w,300px),100% - 28px);scroll-snap-align:start;border-radius:12px;overflow:hidden}
+.flex-block{display:flex;flex-direction:column}.flex-block.body{flex:1 1 auto}
+.flex-box{display:flex;min-width:0}
+.flex-text{min-width:0;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.flex-text.wrap{white-space:pre-wrap;overflow:visible}
+.flex-tap{cursor:pointer}.flex-tap:hover{filter:brightness(.95)}.flex-tap:focus-visible{outline:2px solid #2a8ca0;outline-offset:1px}
+.flex-button{min-width:0;border:0;border-radius:8px;padding:6px 4px;font:inherit;background:#e4e7ee;color:#244F87;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chips button{border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);color:color-mix(in srgb,var(--accent) 75%,var(--ink));background:var(--panel);border-radius:999px;padding:3px 10px;cursor:pointer;font-size:13px}
+.bubble.flex .chips button{border-radius:8px;min-width:64px}
+.bubble.img img{display:block;max-width:min(300px,100%);max-height:320px;border-radius:12px}
+.time{font-size:11px;color:color-mix(in srgb,var(--ink) 60%,transparent);white-space:nowrap}
+.sys{align-self:center;background:rgba(0,0,0,.18);color:#fff;border-radius:999px;font-size:12px;padding:3px 12px}
+.typing{align-self:flex-start;display:flex;gap:8px;align-items:center;color:#fff;font-size:12px}
+.dots{display:inline-flex;gap:3px;background:var(--bubble);border-radius:14px;padding:9px 12px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:b 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes b{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.quick{background:var(--panel);border-top:1px solid var(--line)}
+.quick-group{display:grid;grid-template-columns:48px minmax(0,1fr);border-bottom:1px solid var(--line);--category:#173f68}
+.quick-group.query{--category:#147d87}.quick-group.people{--category:#405879}.quick-group.settings{--category:#52606d}
+.quick-group.manage{--category:#7a2e3e}
+.quick-category{display:grid;place-items:center;background:var(--category);color:white;font-size:13px;font-weight:700}
+.quick-actions{display:flex;min-width:0}
+.quick button{flex:1;min-width:0;border:0;border-right:1px solid var(--line);color:var(--category);background:var(--panel);padding:12px 4px;cursor:pointer;font-size:14px;font-weight:700}
+.quick button:focus-visible{outline:2px solid var(--category);outline-offset:-3px}
+.composer{display:flex;gap:8px;align-items:flex-end;padding:8px 12px 12px;background:var(--panel)}
+.composer textarea{flex:1;resize:none;min-height:40px;max-height:120px;border:1px solid var(--line);border-radius:20px;padding:9px 14px;background:var(--raised)}
+.iconbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--panel);cursor:pointer;display:grid;place-items:center;font-size:18px;flex:none}
+.send{width:40px;height:40px;border-radius:50%;border:0;background:var(--accent);color:#fff;cursor:pointer;font-weight:700;flex:none}
+.notice{padding:10px 16px;background:color-mix(in srgb,var(--warn) 12%,var(--panel));color:var(--warn);font-size:13px;border-bottom:1px solid var(--line)}
+aside.dev{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.dev header{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700;display:flex;align-items:center;gap:8px}
+.log{flex:1;overflow:auto;padding:8px 10px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+.log details{border-bottom:1px solid var(--line);padding:4px 0}
+.log summary{cursor:pointer;color:var(--ink-2)}
+.log .k{display:inline-block;min-width:54px;font-weight:700}
+.log .k.event{color:#2a78d6}.log .k.reply{color:#0ca30c}.log .k.push{color:#b45309}.log .k.error{color:var(--danger)}.log .k.menu{color:#a8455a}
+.log pre{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:16px;width:min(92vw,380px)}
+dialog h3{margin:0 0 10px;font-size:15px}
+.checks{display:grid;gap:4px;margin:8px 0 12px}
+@media (max-width:1100px){.app,.app.nodev{grid-template-columns:240px minmax(0,1fr)}aside.dev{display:none}}
+@media (max-width:720px){
+  .app,.app.nodev{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:100dvh}
+  aside.side,.chats,main.chat{min-width:0}
+  .chat header{flex-wrap:wrap}
+  aside.side{border-right:0;border-bottom:1px solid var(--line);max-height:38vh}
+  .side .bottom{display:none}
+  .chats{display:flex;overflow-x:auto;gap:4px}
+  .chatitem{width:auto;flex:none}
+  .chatitem .p{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="top">
+      <h1><span class="logo">L</span>LINE 模擬器<span class="spacer"></span><button class="btn ghost" id="theme" title="深淺色" aria-label="切換深淺色">◐</button></h1>
+      <label class="small" for="me">目前以誰的身分操作</label>
+      <select id="me"></select>
+      <div class="me" id="meInfo"></div>
+    </div>
+    <div class="chats" id="chats"></div>
+    <div class="bottom">
+      <div class="row"><button class="btn" id="addUser">＋ 新增使用者</button><button class="btn" id="newGroup">＋ 建立群組</button></div>
+      <div class="row"><button class="btn" id="toggleDev">開發者面板</button><button class="btn ghost" id="reset" title="清除所有聊天與綁定">重設</button></div>
+    </div>
+  </aside>
+  <main class="chat">
+    <header><div class="avatar" id="chatAvatar"></div><div><div class="n" id="chatName"></div><div class="m" id="chatMeta"></div></div><span class="spacer"></span><span id="chatActions"></span></header>
+    <div class="notice" id="notice" hidden></div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <div class="quick" id="quick">
+      <div class="quick-group"><span class="quick-category">班表</span><div class="quick-actions"><button data-q="我的班表">我的班表</button></div></div>
+      <div class="quick-group query"><span class="quick-category">查詢</span><div class="quick-actions"><button data-q="查看時段">查看時段</button><button data-q="查看工作">查看工作</button><button data-fill="查 ">查詢人員</button></div></div>
+      <div class="quick-group people"><span class="quick-category">人員</span><div class="quick-actions"><button data-q="勤務人員">勤務人員</button><button data-q="休假人員">休假人員</button><button data-q="人流預測">人流預測</button></div></div>
+      <div class="quick-group settings"><span class="quick-category">更多</span><div class="quick-actions"><button data-q="本月統計">本月統計</button><button data-q="我的設定">我的設定</button><button data-fill="意見 ">意見回饋</button></div></div>
+    </div>
+    <div class="composer">
+      <label class="iconbtn" title="傳送班表照片" aria-label="傳送照片">📷<input type="file" id="file" accept="image/*" hidden></label>
+      <textarea id="input" rows="1" placeholder="輸入訊息（Enter 送出，Shift+Enter 換行）"></textarea>
+      <button class="send" id="send" aria-label="送出">➤</button>
+    </div>
+  </main>
+  <aside class="dev">
+    <header>開發者面板<span class="spacer"></span><span class="chip">webhook 事件與 API 呼叫</span></header>
+    <div class="log" id="log"></div>
+  </aside>
+</div>
+<dialog id="dlg"><form method="dialog" id="dlgForm"><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" value="cancel">取消</button><button class="btn primary" value="ok" id="dlgOk">確定</button></div></form></dialog>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const BOT = {name: '班表機器人', color: '#06c755'};
+const COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#e87ba4', '#4a3aa7', '#008300', '#e34948', '#c98500'];
+let state = {users: [], chats: [], messages: [], log: [], pending: 0, bindings: {}, menus: {}, menuRows: {}};
+const MENU_LABELS = {admin: '管理員選單', officer: '幹部選單'};   // the rich menu the bot linked (state.menus)
+let since = 0, me = null, current = null, lastSeen = {}, lastSignature = '';
+try { const s = JSON.parse(localStorage.getItem('lineSim') || '{}'); me = s.me; current = s.chat; lastSeen = s.seen || {}; } catch (e) {}
+const persist = () => { try { localStorage.setItem('lineSim', JSON.stringify({me, chat: current, seen: lastSeen})); } catch (e) {} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const linkify = s => esc(s).replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+const colorOf = id => COLORS[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const userOf = id => state.users.find(u => u.id === id);
+const hhmm = ts => new Date(ts * 1000).toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit', hour12: false});
+const avatar = (label, color) => `<div class="avatar" style="background:${color}">${esc(label)}</div>`;
+
+async function api(path, body, raw) {
+  const res = await fetch('/sim/api/' + path, raw ? {method: 'POST', body: raw} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
+  const data = await res.json(); if (!res.ok) throw new Error(data.error || '失敗'); return data;
+}
+async function refresh(full) {
+  const res = await fetch('/sim/api/state?since=' + (full ? 0 : since));
+  const d = await res.json();
+  if (full) state.messages = [];
+  state = {...d, messages: state.messages.concat(d.messages)};
+  if (d.messages.length) since = d.messages[d.messages.length - 1].id;
+  if (!me || !userOf(me)) me = state.users[0]?.id;
+  // re-render only on change, so open dropdowns and text selection survive polling
+  const signature = JSON.stringify([since, d.log.length && d.log[d.log.length - 1].ts, d.pending, d.bindings, d.users, d.chats, d.menus]);
+  if (full || signature !== lastSignature) { lastSignature = signature; render(); }
+}
+const myChats = () => state.chats.filter(c => c.members.includes(me) && (c.type === 'group' || c.active))
+  .sort((a, b) => (a.type === 'group' ? 0 : 1) - (b.type === 'group' ? 0 : 1));
+
+function render() {
+  // identity
+  $('#me').innerHTML = state.users.map(u => `<option value="${esc(u.id)}">${esc(u.name)}</option>`).join('');
+  $('#me').value = me;
+  const u = userOf(me), code = state.bindings[me];
+  const menu = MENU_LABELS[state.menus?.[me]];
+  $('#meInfo').innerHTML = u ? `${code ? `<span class="chip ok">${esc(code)}</span>` : '<span class="chip">尚未登記姓名</span>'}${u.friend ? '<span class="chip ok">已加機器人好友</span>' : `<button class="btn" id="follow">加機器人好友</button>`}${menu ? `<span class="chip">${menu}</span>` : ''}` : '';
+  $('#follow')?.addEventListener('click', async () => { await api('follow', {user: me}); await refresh(); openChat('dm:' + me); });
+  // chat list
+  const chats = myChats();
+  if (!chats.find(c => c.key === current)) current = chats[0]?.key || null;
+  $('#chats').innerHTML = chats.map(c => {
+    const msgs = state.messages.filter(m => m.chat === c.key), last = msgs[msgs.length - 1];
+    const unread = msgs.filter(m => m.id > (lastSeen[me + c.key] || 0) && m.sender !== me).length;
+    const preview = last ? (last.type === 'image' ? '[照片]' : (last.text ?? last.altText ?? '').split('\n')[0]) : '';
+    const title = c.type === 'group' ? c.name : BOT.name;
+    return `<button class="chatitem ${c.key === current ? 'active' : ''}" data-chat="${esc(c.key)}">${c.type === 'group' ? avatar('群', '#5b6b82') : avatar('班', BOT.color)}<div class="t"><div class="n">${esc(title)}${c.type === 'group' ? ` <span class="muted" style="font-weight:400;color:var(--muted)">(${c.members.length})</span>` : ''}</div><div class="p">${esc(preview)}</div></div>${unread && c.key !== current ? `<span class="badge">${unread}</span>` : ''}</button>`;
+  }).join('') || '<p style="padding:12px;color:var(--muted)">這個使用者還沒有聊天室：加機器人好友，或被邀請進群組。</p>';
+  renderChat();
+  renderLog();
+}
+
+function renderChat() {
+  const chat = state.chats.find(c => c.key === current);
+  const has = !!chat;
+  $('#input').disabled = $('#send').disabled = $('#file').disabled = !has;
+  if (!has) { $('#chatName').textContent = ''; $('#chatMeta').textContent = ''; $('#msgs').innerHTML = ''; $('#chatActions').innerHTML = ''; return; }
+  const group = chat.type === 'group';
+  $('#chatAvatar').outerHTML = group ? avatar('群', '#5b6b82').replace('class="avatar"', 'class="avatar" id="chatAvatar"') : avatar('班', BOT.color).replace('class="avatar"', 'class="avatar" id="chatAvatar"');
+  $('#chatName').textContent = group ? chat.name : BOT.name;
+  $('#chatMeta').textContent = group ? chat.members.map(id => userOf(id)?.name).filter(Boolean).join('、') + '、' + BOT.name : '官方帳號（1 對 1）';
+  $('#chatActions').innerHTML = group ? `<select id="inviteWho" aria-label="邀請成員" style="width:auto"><option value="">＋ 邀請成員</option>${state.users.filter(u => !chat.members.includes(u.id)).map(u => `<option value="${esc(u.id)}">${esc(u.name)}</option>`).join('')}</select>` : '';
+  $('#inviteWho')?.addEventListener('change', async ev => { if (ev.target.value) { await api('invite', {chat: current, user: ev.target.value}); refresh(); } });
+  const box = $('#msgs'), atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  const msgs = state.messages.filter(m => m.chat === current);
+  const lastBot = msgs.length && msgs[msgs.length - 1].sender === 'bot' ? msgs[msgs.length - 1] : null;
+  box.innerHTML = msgs.map(m => {
+    const mine = m.sender === me, bot = m.sender === 'bot', u = userOf(m.sender);
+    const name = bot ? BOT.name : (u?.name || m.sender);
+    const quick = bot && m === lastBot && m.quickReply ? `<div class="chips">${m.quickReply.items.map(i => chip(i.action)).join('')}</div>` : '';
+    const content = m.type === 'image' ? `<div><div class="bubble img"><a href="${esc(m.originalContentUrl || m.url)}" target="_blank"><img src="${esc(m.previewImageUrl || m.url)}" alt="照片" loading="lazy"></a></div>${quick}</div>`
+      : m.type === 'flex' ? `<div style="min-width:0"><div class="bubble flex">${flexRender(m.contents)}</div>${quick}</div>`
+      : `<div class="bubble">${linkify(m.text)}${quick}</div>`;
+    return `<div class="msg ${mine ? 'mine' : ''}">${mine ? '' : bot ? avatar('班', BOT.color) : avatar(name.slice(0, 1), colorOf(m.sender))}<div class="col">${!mine && (group || !bot) ? `<div class="who">${esc(name)}</div>` : ''}<div style="display:flex;gap:6px;align-items:flex-end;${mine ? 'flex-direction:row-reverse' : ''}">${content}<span class="time">${hhmm(m.ts)}</span></div></div></div>`;
+  }).join('') + (state.pending && !group ? `<div class="typing">${avatar('班', BOT.color)}<span class="dots"><i></i><i></i><i></i></span><span>處理中</span></div>` : '');
+  shrinkToFit(box);
+  if (atBottom || msgs.length && msgs[msgs.length - 1].sender === me) box.scrollTop = box.scrollHeight;
+  if (msgs.length) { lastSeen[me + current] = msgs[msgs.length - 1].id; persist(); }
+  const notice = $('#notice');
+  const code = state.bindings[me];
+  $('#quick').style.display = group ? 'none' : '';
+  renderManageRow();
+  notice.hidden = !group && !!code;
+  notice.textContent = group ? '群組安靜收班表：在這裡傳照片即可，機器人不會在群組回話；設定與查詢都在私訊完成。' : code ? '' : `${userOf(me)?.name || ''} 請先私訊「設定 你的姓名」（例如 設定 蕭志明），再點「我的班表」查詢勤務。`;
+}
+
+// The 「管理」 row of the rich menu the bot linked to this user (幹部 and administrators; state.menus), under the
+// four rows everyone has, as LINE shows it; gone again once nothing is linked.
+function renderManageRow() {
+  const row = state.menuRows?.[state.menus?.[me]];
+  let group = $('#quick .quick-group.manage');
+  if (!row) { group?.remove(); return; }
+  if (!group) { group = document.createElement('div'); group.className = 'quick-group manage'; $('#quick').append(group); }
+  group.innerHTML = `<span class="quick-category">${esc(row.category)}</span><div class="quick-actions">${row.buttons.map(b =>
+    b.fill !== undefined ? `<button data-fill="${esc(b.fill)}">${esc(b.label)}</button>` : `<button data-q="${esc(b.text)}">${esc(b.label)}</button>`).join('')}</div>`;
+}
+
+function renderLog() {
+  if ($('#app').classList.contains('nodev')) return;
+  const box = $('#log'), atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  box.innerHTML = state.log.map(item => {
+    const p = item.payload;
+    const summary = item.kind === 'event' ? `${p.type}${p.message ? ' · ' + p.message.type + (p.message.text ? '「' + p.message.text.slice(0, 18) + '」' : '') : ''}` : item.kind === 'error' ? String(p)
+      : item.kind === 'menu' ? `${p.richMenu ? '連結 ' + p.richMenu : '取消連結（回到預設選單）'} → ${(p.userId || '').slice(0, 12)}`
+      : `${(p.messages || []).length} 則訊息${p.to ? ' → ' + p.to.slice(0, 12) : ''}`;
+    return `<details><summary><span class="k ${item.kind}">${item.kind}</span> ${hhmm(item.ts)} ${esc(summary)}</summary><pre>${esc(JSON.stringify(p, null, 2))}</pre></details>`;
+  }).join('');
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+
+// Render the Flex components used by the bot, preserving columns and typography. `parent` is the layout of
+// the enclosing box ('block' and 'hero' for a bubble's parts), `gap` that box's spacing before this component.
+function flexRender(n, parent = null, gap = null) {
+  if (!n) return '';
+  if (n.type === 'carousel') return `<div class="flex-carousel">${n.contents.map(b => flexRender(b)).join('')}</div>`;
+  const widths = {nano: 120, micro: 160, deca: 220, hecto: 241, kilo: 260, mega: 300, giga: 500};
+  const color = v => /^#[\da-f]{6}([\da-f]{2})?$/i.test(v || '') ? v : null;   // #RRGGBB or #RRGGBBAA
+  if (n.type === 'bubble') {
+    // each part on its styles.<part>.backgroundColor; the part's box paints its own background over that
+    const part = key => n[key] ? `<div class="flex-block ${key}" style="${color(n.styles?.[key]?.backgroundColor) ? 'background:' + n.styles[key].backgroundColor : ''}">${flexRender(n[key], key === 'hero' ? 'hero' : 'block')}</div>` : '';
+    return `<div class="flex-bubble" style="--w:${widths[n.size] || 300}px">${['header', 'hero', 'body', 'footer'].map(part).join('')}</div>`;
+  }
+  const spacing = {none:0,xs:4,sm:8,md:12,lg:16,xl:20,xxl:24};
+  const size = {xxs:11,xs:12,sm:14,md:16,lg:19,xl:22,xxl:28};
+  const length = v => v in spacing ? spacing[v] + 'px' : /^\d{1,3}px$/.test(v || '') ? v : null;
+  const extent = v => /^\d+(\.\d+)?(px|%)$/.test(v || '') ? v : null;
+  const horizontal = parent === 'horizontal', tap = n.type === 'button' ? '' : actionAttrs(n.action);
+  const styles = [];
+  const before = length(n.margin) || gap;   // a margin replaces the box's spacing, as in LINE
+  if (before) styles.push(`margin-${horizontal ? 'left' : 'top'}:${before}`);
+  // LINE's flex: 1 across a horizontal box (fillers everywhere), 0 down a vertical one; a width across or a
+  // height down fixes the size instead
+  const grow = Number.isInteger(n.flex) && n.flex >= 0 ? n.flex : horizontal || n.type === 'filler' ? 1 : 0;
+  const width = extent(n.width), height = n.type === 'box' && extent(n.height);
+  if (parent === 'block' || parent === 'hero') styles.push('flex:1 1 auto');
+  else if (n.type === 'separator' || !grow || (horizontal ? width : height)) styles.push('flex:none');
+  else styles.push(horizontal ? `flex:${grow} 1 0` : `flex:${grow} 0 auto`);
+  if (width) styles.push('width:' + width);
+  if (height) styles.push('height:' + height);
+  const style = () => esc(styles.join(';'));
+  const attrs = cls => `class="${cls}${tap ? ' flex-tap' : ''}" style="${style()}"${tap ? ` role="button" tabindex="0" ${tap}` : ''}`;
+  if (n.type === 'box') {
+    styles.push('flex-direction:' + (n.layout === 'vertical' ? 'column' : 'row'));
+    if (parent === 'block' || length(n.paddingAll)) styles.push('padding:' + (length(n.paddingAll) || '20px'));
+    for (const [key, side] of [['paddingTop', 'top'], ['paddingBottom', 'bottom'], ['paddingStart', 'left'], ['paddingEnd', 'right']])
+      if (length(n[key])) styles.push(`padding-${side}:` + length(n[key]));
+    const g = n.background;
+    if (g?.type === 'linearGradient' && color(g.startColor) && color(g.endColor))
+      styles.push(`background:linear-gradient(${/^\d+(\.\d+)?deg$/.test(g.angle || '') ? g.angle : '0deg'},${g.startColor},${g.endColor})`);
+    else if (color(n.backgroundColor)) styles.push('background:' + n.backgroundColor);
+    if (length(n.cornerRadius)) styles.push('border-radius:' + length(n.cornerRadius), 'overflow:hidden');
+    if (length(n.borderWidth) && color(n.borderColor)) styles.push(`border:${length(n.borderWidth)} solid ${n.borderColor}`);
+    for (const [key, css] of [['justifyContent', 'justify-content'], ['alignItems', 'align-items']])
+      if (/^(flex-start|center|flex-end|space-between|space-around|space-evenly)$/.test(n[key] || '')) styles.push(`${css}:${n[key]}`);
+    const layout = n.layout === 'vertical' ? 'vertical' : 'horizontal', space = length(n.spacing);
+    return `<div ${attrs('flex-box')}>${(n.contents || []).map((x, i) => flexRender(x, layout, i ? space : null)).join('')}</div>`;
+  }
+  if (n.type === 'text') {
+    // without wrap a text keeps to one line and ends in "…", as in LINE; shrink-to-fit scales it (shrinkToFit)
+    const font = (t, base) => [(size[t.size] || base) && `font-size:${size[t.size] || base}px`, t.weight === 'bold' && 'font-weight:700',
+      /^(underline|line-through)$/.test(t.decoration || '') && 'text-decoration:' + t.decoration, color(t.color) && 'color:' + t.color].filter(Boolean);
+    styles.push(...font(n, 16));
+    if (n.align === 'center' || n.align === 'end') styles.push('text-align:' + (n.align === 'end' ? 'right' : 'center'));
+    if (horizontal && /^(top|center|bottom)$/.test(n.gravity || '')) styles.push('align-self:' + {top: 'flex-start', center: 'center', bottom: 'flex-end'}[n.gravity]);
+    const spans = (n.contents || []).filter(s => s.type === 'span').map(s => `<span style="${esc(font(s).join(';'))}">${esc(s.text)}</span>`).join('');
+    return `<div ${attrs('flex-text' + (n.wrap ? ' wrap' : n.adjustMode === 'shrink-to-fit' ? ' shrink' : ''))}>${spans || esc(n.text)}</div>`;
+  }
+  if (n.type === 'separator') return `<div style="${style()};border-${horizontal ? 'left' : 'top'}:1px solid ${color(n.color) || '#e2e8f0'}"></div>`;
+  if (n.type === 'filler') return `<div style="${style()}"></div>`;
+  if (n.type === 'image' && /^(https?:)?\//.test(n.url || '')) {
+    const [w, h] = /^\d+(\.\d+)?:\d+(\.\d+)?$/.test(n.aspectRatio || '') ? n.aspectRatio.split(':') : [1, 1];
+    styles.push('display:block', 'width:100%', `aspect-ratio:${w}/${h}`, 'object-fit:' + (n.aspectMode === 'cover' ? 'cover' : 'contain'));
+    return `<img ${attrs('flex-image')} src="${esc(n.url)}" alt="">`;
+  }
+  if (n.type === 'button') {
+    const a = n.action || {}, tint = color(n.color);
+    if (n.style === 'primary' || n.style === 'secondary') styles.push('background:' + (tint || (n.style === 'primary' ? '#17c950' : '#dcdfe5')), 'color:' + (n.style === 'primary' ? '#fff' : '#111'));
+    else if (n.style === 'link') styles.push('background:transparent', ...(tint ? ['color:' + tint] : []));
+    styles.push('min-height:' + (n.height === 'sm' ? 40 : 52) + 'px');
+    if (a.type === 'uri' && /^https?:\/\//.test(a.uri || '')) return `<a class="flex-button" style="${style()}" href="${esc(a.uri)}" target="_blank" rel="noopener">${esc(a.label)}</a>`;
+    return `<button class="flex-button" style="${style()}" ${actionAttrs(a)}>${esc(a.label)}</button>`;
+  }
+  return '';
+}
+// adjustMode "shrink-to-fit": a text wider than its cell is scaled down to fit, as LINE does (everything is
+// measured before anything is resized, so the page lays out once).
+function shrinkToFit(root) {
+  const over = [...root.querySelectorAll('.flex-text.shrink')].filter(t => t.clientWidth && t.scrollWidth > t.clientWidth)
+    .map(t => [t, parseFloat(getComputedStyle(t).fontSize) * t.clientWidth / t.scrollWidth]);
+  for (const [t, px] of over) t.style.fontSize = Math.max(8, Math.floor(px * 2) / 2) + 'px';
+}
+// What a tap does, as data attributes for the click handler: message → data-q; postback → data-pb and
+// data-display, and with openKeyboard also data-fill (LINE opens the keyboard on fillInText and still posts
+// the data); datetimepicker (mode date) → data-pb plus data-date, the day LINE's picker opens on; uri → data-uri.
+// Used by quick-reply chips and by Flex buttons, boxes and texts alike.
+function actionAttrs(a) {
+  if (a?.type === 'message') return `data-q="${esc(a.text)}"`;
+  if (a?.type === 'datetimepicker' && a.mode === 'date') return `data-pb="${esc(a.data)}" data-date="${esc(a.initial || '')}"`;
+  if (a?.type === 'postback') return `data-pb="${esc(a.data)}" data-display="${esc(a.displayText || '')}"` + (a.inputOption === 'openKeyboard' ? ` data-fill="${esc(a.fillInText || '')}"` : '');
+  if (a?.type === 'uri' && /^https?:\/\//.test(a.uri || '')) return `data-uri="${esc(a.uri)}"`;
+  return '';
+}
+function chip(a) { return `<button ${actionAttrs(a)}>${esc(a.label)}</button>`; }
+
+function openChat(key) { current = key; persist(); render(); $('#input').focus(); }
+
+async function send(textValue) {
+  const value = (textValue ?? $('#input').value).trim();
+  if (!value || !current) return;
+  $('#input').value = ''; autosize();
+  await api('send', {chat: current, user: me, text: value}); refresh();
+}
+function autosize() { const t = $('#input'); t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight) + 'px'; }
+
+function dialog(title, body, onOk) {
+  $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = body;
+  const dlg = $('#dlg'); dlg.showModal();
+  dlg.onclose = () => { if (dlg.returnValue === 'ok') onOk(dlg); };
+}
+
+$('#me').onchange = ev => { me = ev.target.value; current = null; persist(); render(); };
+$('#chats').onclick = ev => { const b = ev.target.closest('[data-chat]'); if (b) openChat(b.dataset.chat); };
+$('#send').onclick = () => send();
+$('#msgs').onclick = async ev => {
+  // the innermost tappable element only, so a tappable text inside a tappable box does not tap the box too
+  const b = ev.target.closest('button, [role="button"]'); if (!b || !current) return;
+  if (b.dataset.uri) { window.open(b.dataset.uri, '_blank', 'noopener'); return; }
+  if (b.dataset.fill !== undefined) { $('#input').value = b.dataset.fill; autosize(); $('#input').focus(); }
+  if (b.dataset.date !== undefined) {   // LINE's date picker: a prompt stands in for it
+    const day = prompt('選擇日期（YYYY-MM-DD）', b.dataset.date);
+    if (day) { await api('postback', {chat: current, user: me, data: b.dataset.pb, params: {date: day.trim()}}); refresh(); }
+    return;
+  }
+  if (b.dataset.pb !== undefined) { await api('postback', {chat: current, user: me, data: b.dataset.pb, display: b.dataset.display}); refresh(); }
+  else if (b.dataset.q) send(b.dataset.q);
+};
+$('#msgs').onkeydown = ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[role="button"]')) { ev.preventDefault(); ev.target.click(); } };
+$('#input').addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); send(); } });
+$('#input').addEventListener('input', autosize);
+$('#quick').onclick = ev => { const b = ev.target.closest('button'); if (!b) return; if (b.dataset.q) send(b.dataset.q); else { $('#input').value = b.dataset.fill; $('#input').focus(); } };
+$('#file').onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f || !current) return;
+  await api(`image?chat=${encodeURIComponent(current)}&user=${encodeURIComponent(me)}`, null, f); refresh();
+};
+$('#addUser').onclick = () => dialog('新增使用者', '<label class="small" for="nu">名稱</label><input type="text" id="nu" placeholder="例如 小美"><label class="checks"><span><input type="checkbox" id="nf" checked> 同時加機器人好友</span></label>', async dlg => {
+  const name = dlg.querySelector('#nu').value.trim(); if (!name) return;
+  const u = await api('user', {name, friend: dlg.querySelector('#nf').checked}); me = u.id; current = null; persist(); refresh();
+});
+$('#newGroup').onclick = () => dialog('建立群組並邀請機器人', `<label class="small" for="gn">群組名稱</label><input type="text" id="gn" value="新群組"><div class="checks">${state.users.map(u => `<label><input type="checkbox" value="${esc(u.id)}" ${u.id === me ? 'checked' : ''}> ${esc(u.name)}</label>`).join('')}</div>`, async dlg => {
+  const members = [...dlg.querySelectorAll('.checks input:checked')].map(i => i.value);
+  const chat = await api('group', {name: dlg.querySelector('#gn').value, members}); await refresh(); if (chat.members.includes(me)) openChat(chat.key);
+});
+$('#toggleDev').onclick = () => { $('#app').classList.toggle('nodev'); renderLog(); };
+$('#reset').onclick = () => dialog('重設模擬器', '<p>清除所有聊天紀錄、使用者與代號綁定，回到預設的三位使用者與一個群組。已辨識的班表紀錄會保留在 runs 資料夾。</p>', async () => { await api('reset'); since = 0; await refresh(true); });
+$('#theme').onclick = () => { const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; };
+if (matchMedia('(max-width: 1100px)').matches) $('#app').classList.add('nodev');
+
+refresh(true);
+setInterval(() => refresh(), 1200);
+})();
+</script>
+</body>
+</html>

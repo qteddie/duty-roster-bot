@@ -1,0 +1,236 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>全員代號標註台</title><style>
+:root{--black:#050607;--panel:#0d1013;--raised:#15191e;--line:#2a3037;--text:#eef2f4;--muted:#8c98a4;--cyan:#56d7ff;--amber:#ffbd5a;--green:#78dc9b}
+*{box-sizing:border-box}body{margin:0;background:var(--black);color:var(--text);font:15px "PingFang TC","Noto Sans TC",system-ui,sans-serif}button,input,select{font:inherit;color:inherit}button,select{background:var(--raised);border:1px solid var(--line);padding:9px 12px}button{cursor:pointer}button:hover,button:focus-visible,select:focus-visible,input:focus-visible{border-color:var(--cyan);outline:none}.toolbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;min-height:58px;padding:9px 14px;background:#080a0c;border-bottom:1px solid var(--line)}.spacer{flex:1}.primary{background:var(--cyan);border-color:var(--cyan);color:#00141b;font-weight:700}.danger{color:var(--amber)}.workspace{display:grid;grid-template-columns:minmax(520px,1fr) 390px;min-height:calc(100vh - 58px)}.stage{display:grid;place-items:center;padding:28px;border-right:1px solid var(--line);background:radial-gradient(circle at 50% 44%,#171b1f 0,#090b0d 58%,#050607 100%)}.scan{position:relative;padding:16px;background:#020303;border:1px solid #252c31;box-shadow:0 18px 70px #000}.scan:before,.scan:after{content:"";position:absolute;width:20px;height:20px;border-color:var(--cyan)}.scan:before{left:-1px;top:-1px;border-left:2px solid;border-top:2px solid}.scan:after{right:-1px;bottom:-1px;border-right:2px solid;border-bottom:2px solid}canvas{display:block;width:min(57vw,620px);height:auto;background:white;cursor:crosshair}.side{background:var(--panel);padding:20px;overflow:auto}.meta{display:flex;justify-content:space-between;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:16px}.quick-label{border:1px solid var(--line);background:#090b0d;padding:14px;margin-bottom:16px}.quick-label label{display:block;color:var(--muted);margin-bottom:7px}.quick-row{display:grid;grid-template-columns:1fr auto;gap:8px}.quick-row input{min-width:0;background:#020303;border:1px solid #35404a;padding:12px 14px;font:700 28px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}.quick-label small{display:block;color:var(--muted);margin-top:9px;line-height:1.5}.confidence{color:var(--amber)}#search{width:100%;background:#090b0d;border:1px solid var(--line);padding:10px 12px}.people{display:flex;gap:5px;flex-wrap:wrap;max-height:170px;overflow:auto;padding:10px 0 16px}.people button{min-width:42px;padding:7px 9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.people button.active{background:#173949;border-color:var(--cyan);color:var(--cyan)}.section-title{color:var(--muted);border-top:1px solid var(--line);padding-top:14px}.item{display:grid;grid-template-columns:1fr 110px 38px;gap:6px;padding:9px 0;border-bottom:1px solid #20262b}.item input,.item select{background:#080a0c;border:1px solid var(--line);padding:8px}.item.proposal input{color:var(--cyan)}.hint{color:var(--muted);line-height:1.7;margin:18px 0 0}.kbd{display:inline-block;border:1px solid #3b444d;background:#161b20;padding:1px 6px;font:12px ui-monospace,SFMono-Regular,monospace;color:#d7dee3}@media(max-width:900px){.workspace{grid-template-columns:1fr}.stage{border-right:0;border-bottom:1px solid var(--line);padding:12px}canvas{width:min(92vw,620px)}.side{padding:14px}.toolbar{position:static;flex-wrap:wrap}}
+.workspace{grid-template-columns:minmax(0,1fr) clamp(580px,42vw,760px)}
+.side{padding:26px;overflow:visible;min-width:0}
+.people{max-height:none;overflow:visible;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;padding:14px 0 22px}
+.people button{min-width:0;width:100%;min-height:58px;padding:12px 6px;font-size:22px;font-weight:650}
+#search{padding:14px 16px;font-size:18px}
+.item{grid-template-columns:minmax(0,1fr) 150px 48px;gap:10px}.item input,.item select{font-size:18px;padding:12px}
+.stage{align-self:start;position:sticky;top:58px;min-width:0}.scan{max-width:100%}canvas{width:min(calc(58vw - 100px),620px);max-width:100%}
+@media(max-width:1100px){.workspace{grid-template-columns:minmax(0,1fr) 480px}.side{padding:18px}.people{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.stage{position:static}canvas{width:min(85vw,620px)}.people{grid-template-columns:repeat(auto-fit,minmax(64px,1fr))}}
+</style>
+<style>
+.workspace{grid-template-columns:300px minmax(0,1fr) clamp(480px,36vw,700px)}
+.annotation-side{background:var(--panel);padding:20px;border-right:1px solid var(--line);align-self:start;position:sticky;top:58px;min-width:0}
+.annotation-side .section-title{border-top:0;padding-top:0;margin-bottom:12px}
+.annotation-side .item{grid-template-columns:minmax(0,1fr) 38px;gap:8px}
+.annotation-side .item input{font-size:22px}.annotation-side .item select{grid-column:1;grid-row:2;font-size:14px;width:100%}.annotation-side .item button{grid-column:2;grid-row:1 / span 2}
+canvas{width:min(calc(64vw - 400px),620px)}
+@media(max-width:1200px){.workspace{grid-template-columns:240px minmax(0,1fr) 400px}.annotation-side{padding:14px}.people{grid-template-columns:repeat(5,minmax(0,1fr))}canvas{width:max(180px,calc(100vw - 750px))}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.annotation-side{position:static;grid-row:2}.stage{grid-row:1}.side{grid-row:3}canvas{width:min(85vw,620px)}}
+</style>
+<header class="toolbar"><select id="filter"><option value="review">待審核</option><option value="uncertain">低信心</option><option value="reviewed">已複核</option><option value="all">全部</option></select><button id="reload">套用</button><button id="prev">←</button><button id="next">→</button><strong id="title">載入中</strong><span class="spacer"></span><button id="empty" class="danger">空白 E</button><button id="save" class="primary">接受 Tab</button><button id="bulk">接受全部 ≥95%</button></header>
+<main class="workspace"><section class="stage"><div class="scan"><canvas id="canvas"></canvas></div></section><aside class="side"><div class="meta"><span id="status">讀取資料</span><span id="source"></span></div><div class="quick-label"><label for="quickCode">直接輸入人員代號</label><div class="quick-row"><input id="quickCode" inputmode="numeric" autocomplete="off" placeholder="例如 72"><button id="applyCode">套用</button></div><small>載入後會自動全選。直接輸入 <b>72</b> 再按 Tab，即可修正並接受。</small></div><input id="search" placeholder="搜尋代號或姓名"><div id="people" class="people"></div><div class="section-title">這一格的標註</div><div id="list"></div><p class="hint"><span class="kbd">Tab</span> 接受　<span class="kbd">E</span> 空白　<span class="kbd">S</span> 跳過　<span class="kbd">← →</span> 前後　<span class="kbd">Delete</span> 刪框</p></aside></main>
+<style>
+.people{grid-template-columns:repeat(10,minmax(0,1fr));gap:7px}.people button{min-height:48px;padding:8px 4px;font-size:21px}
+@media(min-width:1600px){.workspace{grid-template-columns:280px minmax(0,1fr) minmax(680px,40vw)}}
+</style>
+<style>
+/* Quiet graphite surfaces for long annotation sessions; scan pixels stay unchanged. */
+:root{--black:#303236;--panel:#36383c;--raised:#404348;--line:#505359;--text:#dedfe1;--muted:#b0b3b8;--cyan:#a0c4cf;--amber:#cfbb94;--green:#a6c3af}
+body{background:var(--black)}
+.toolbar{background:#35373b}.stage{background:#303236}
+.scan{background:#393b3f;border-color:#515459;box-shadow:0 8px 24px #0002}
+.scan:before,.scan:after{color:#7c858b}
+.quick-label{background:#37393d}.quick-row input{background:#303236;border-color:#5b5f65}
+#search,.item input,.item select{background:#323438;border-color:var(--line)}
+.item{border-bottom-color:#4a4d52}.people button.active{background:#4b6068;border-color:#8dabb5;color:#e0ecef}
+.primary{background:#94b4bf;border-color:#94b4bf;color:#253339}
+.kbd{background:#42454a;border-color:#64686e;color:#d9dbde}
+button:hover{background:#4b4f55}button.primary:hover{background:#aac4cd}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #a0c4cf;outline-offset:2px}
+</style>
+<script>
+const annotationSide=document.createElement('aside');annotationSide.className='annotation-side';annotationSide.setAttribute('aria-label','這一格的標註');
+const jumpForm=document.createElement('form');jumpForm.style.cssText='display:flex;gap:6px;align-items:center';
+const jumpInput=document.createElement('input');jumpInput.type='number';jumpInput.min='1';jumpInput.placeholder='照片序號';jumpInput.setAttribute('aria-label','目前佇列的照片序號');jumpInput.style.cssText='width:105px;padding:9px;background:var(--panel);border:1px solid var(--line)';
+const jumpButton=document.createElement('button');jumpButton.textContent='跳轉';jumpButton.type='submit';jumpForm.append(jumpInput,jumpButton);document.querySelector('#title').after(jumpForm);
+jumpForm.onsubmit=e=>{e.preventDefault();const value=Number(jumpInput.value);if(!Number.isInteger(value)||value<1||value>rows.length){alert(`請輸入 1–${rows.length} 的照片序號`);return}i=value-1;start=null;boxDrag=null;previewPoint=null;load()};
+jumpInput.onkeydown=e=>{if(e.key==='Enter')e.stopPropagation()};
+annotationSide.append(document.querySelector('.section-title'),document.querySelector('#list'),document.querySelector('.hint'));
+document.querySelector('.workspace').prepend(annotationSide);
+let rows=[],codes=[],i=0,boxes=[],active=-1,start=null,img=new Image(),activeCode='1';const c=document.querySelector('#canvas'),x=c.getContext('2d'),quick=document.querySelector('#quickCode');
+function renderPeople(){
+  const q=document.querySelector('#search').value.trim().toLowerCase(),e=document.querySelector('#people');e.innerHTML='';
+  let previousGroup=null;
+  codes.filter(p=>!q||p.code.toLowerCase().includes(q)||(p.name||'').toLowerCase().includes(q)).forEach(p=>{
+    const group=/^\d+$/.test(p.code)?'number':/^[A-Z]+$/.test(p.code)?'letter':'chinese';
+    const b=document.createElement('button');
+    if(group!==previousGroup)b.style.gridColumnStart='1';
+    previousGroup=group;
+    b.textContent=p.name?`${p.code} ${p.name}`:p.code;b.className=p.code===activeCode?'active':'';
+    b.onclick=()=>{activeCode=p.code;quick.value=p.code;quick.focus();quick.select();if(active>=0&&boxes[active])save();else renderPeople()};e.append(b);
+  });
+}
+const labelLayer=document.createElement('div');labelLayer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:2';document.querySelector('.scan').append(labelLayer);
+function renderBoxLabels(){
+  labelLayer.replaceChildren();if(!c.width||!c.height)return;
+  const sx=c.clientWidth/c.width,sy=c.clientHeight/c.height;
+  boxes.forEach((b,n)=>{
+    const label=document.createElement('span');label.textContent=b.text||'未標註';
+    const color=n===active?'#56d7ff':b.role==='personnel_code'?'#78dc9b':'#ffbd5a';
+    const frame=document.createElement('div');
+    frame.style.cssText=`position:absolute;left:${c.offsetLeft+b.x1*sx}px;top:${c.offsetTop+b.y1*sy}px;width:${(b.x2-b.x1)*sx}px;height:${(b.y2-b.y1)*sy}px;border:${n===active?5:4}px solid ${color};`;
+    labelLayer.append(frame);
+    if(n===active)for(const px of [b.x1,b.x2])for(const py of [b.y1,b.y2]){
+      const handle=document.createElement('span');handle.style.cssText=`position:absolute;left:${c.offsetLeft+px*sx-5}px;top:${c.offsetTop+py*sy-5}px;width:10px;height:10px;background:#eef2f4;border:1px solid #36444b;`;labelLayer.append(handle);
+    }
+    label.style.cssText=`position:absolute;font:700 20px/1.2 system-ui,sans-serif;padding:4px 9px;min-width:32px;text-align:center;white-space:nowrap;background:${color};color:#061014;border:1px solid #061014;box-shadow:0 2px 6px #0008;border-radius:3px`;
+    labelLayer.append(label);
+    label.style.left=(c.offsetLeft+Math.max(0,Math.min(b.x1*sx,c.clientWidth-label.offsetWidth)))+'px';
+    const y=b.y1*sy,h=label.offsetHeight;
+    label.style.top=(c.offsetTop+Math.max(0,Math.min(y>=h+3?y-h-3:y,c.clientHeight-h)))+'px';
+  });
+}
+new ResizeObserver(renderBoxLabels).observe(c);
+function draw(updateList=true){
+  x.clearRect(0,0,c.width,c.height);x.drawImage(img,0,0);if(rows[i]&&rows[i].core){let k=rows[i].core;x.save();x.setLineDash([7,5]);x.strokeStyle='#38bdf8';x.lineWidth=2;x.strokeRect(k[0],k[1],k[2]-k[0],k[3]-k[1]);x.restore()}
+  renderBoxLabels();
+  if(start&&previewPoint&&!boxDrag){
+    const left=Math.min(start[0],previewPoint[0]),top=Math.min(start[1],previewPoint[1]),w=Math.abs(previewPoint[0]-start[0]),h=Math.abs(previewPoint[1]-start[1]);
+    const preview=document.createElement('div'),sx=c.clientWidth/c.width,sy=c.clientHeight/c.height;
+    preview.style.cssText=`position:absolute;left:${c.offsetLeft+left*sx}px;top:${c.offsetTop+top*sy}px;width:${w*sx}px;height:${h*sy}px;border:4px solid #a0c4cf;background:#a0c4cf33`;labelLayer.append(preview);
+  }
+  if(updateList)renderList();
+}
+function renderList(){
+  let e=document.querySelector('#list');e.innerHTML='';
+  boxes.forEach((b,n)=>{
+    let d=document.createElement('div');d.className='item '+(b.source&&b.source!=='human'?'proposal':'');
+    const selectBox=()=>{active=n;quick.value=b.text;draw(false)};
+    const markHuman=()=>{b.source='human';b.confidence=null;d.className='item';d.title='人工標註'};
+    let t=document.createElement('input');t.value=b.text;t.inputMode='numeric';t.onfocus=selectBox;
+    t.oninput=()=>{active=n;b.text=t.value.trim().toUpperCase();markHuman();quick.value=b.text;renderPeople();draw(false)};
+    // Tab saving is handled centrally to avoid duplicate submissions.
+    let s=document.createElement('select');
+    ['personnel_code','other','unknown','partial'].forEach(v=>{let o=document.createElement('option');o.value=o.textContent=v;o.selected=b.role===v;s.append(o)});
+    s.onfocus=selectBox;s.onchange=()=>{active=n;b.role=s.value;markHuman();draw(false)};
+    let del=document.createElement('button');del.textContent='×';
+    del.onclick=event=>{event.stopPropagation();boxes.splice(n,1);active=-1;draw();syncQuick()};
+    d.onclick=selectBox;
+    d.title=b.confidence==null?'人工標註':`自動建議 ${Math.round(b.confidence*100)}%`;d.append(t,s,del);e.append(d);
+  });
+}
+function syncQuick(){let value=active>=0&&boxes[active]?boxes[active].text:activeCode;quick.value=value||'';if(value)activeCode=value;renderPeople()}
+function applyQuick(){let value=quick.value.trim().toUpperCase();if(!value)return;activeCode=value;if(active>=0&&boxes[active]){boxes[active].text=value;boxes[active].role='personnel_code';boxes[active].source='human';boxes[active].confidence=null}renderPeople();draw()}
+function load(){if(!rows.length){document.querySelector('#title').textContent='佇列完成';document.querySelector('#status').textContent='沒有待處理格';x.clearRect(0,0,c.width,c.height);quick.value='';return}let r=rows[i];boxes=(r.annotations||[]).map(a=>({...a.box,text:a.text,role:a.role,source:a.source,confidence:a.confidence}));active=boxes.length?0:-1;document.querySelector('#title').textContent=`${i+1} / ${rows.length}　r${r.row} c${r.column}`;img.onload=()=>{c.width=img.naturalWidth;c.height=img.naturalHeight;draw();syncQuick();quick.focus();quick.select()};img.src='/image/'+encodeURIComponent(r.image)+'?v='+Date.now();let confidence=boxes.length?Math.min(...boxes.map(b=>b.confidence??1)):null;document.querySelector('#status').innerHTML=`${r.reviewed?'已複核':'待審'}${confidence==null?'':`　<span class="confidence">最低 ${Math.round(confidence*100)}%</span>`}`;document.querySelector('#source').textContent=boxes[0]?.source||'人工'}
+function pos(e){let r=c.getBoundingClientRect(),px=Math.round((e.clientX-r.left)*c.width/r.width),py=Math.round((e.clientY-r.top)*c.height/r.height);return [Math.max(0,Math.min(c.width,px)),Math.max(0,Math.min(c.height,py))]}
+function selectCanvasBox(point){
+  // Prefer the smallest containing box when detections overlap.
+  const hits=boxes.map((b,n)=>({b,n})).filter(({b})=>point[0]>=b.x1&&point[0]<=b.x2&&point[1]>=b.y1&&point[1]<=b.y2);
+  hits.sort((a,b)=>(a.b.x2-a.b.x1)*(a.b.y2-a.b.y1)-(b.b.x2-b.b.x1)*(b.b.y2-b.b.y1));
+  if(!hits.length)return false;
+  active=hits[0].n;draw();quick.value=boxes[active].text||'';quick.focus();quick.select();return true;
+}
+let boxDrag=null,previewPoint=null,pointerOrigin=null;
+function cornerHit(p){
+  const r=c.getBoundingClientRect(),order=boxes.map((_,n)=>n).sort((a,b)=>(b===active)-(a===active));
+  for(const n of order){const b=boxes[n];for(const corner of ['nw','ne','sw','se']){
+    const px=corner.endsWith('w')?b.x1:b.x2,py=corner.startsWith('n')?b.y1:b.y2;
+    if(Math.hypot((p[0]-px)*r.width/c.width,(p[1]-py)*r.height/c.height)<=12)return {n,corner};
+  }}return null;
+}
+c.style.touchAction='none';
+c.onpointerdown=e=>{
+  if(e.button!==0)return;e.preventDefault();start=pos(e);previewPoint=start;pointerOrigin=[e.clientX,e.clientY];const hit=e.shiftKey?null:cornerHit(start);
+  if(hit){active=hit.n;boxDrag={...hit,original:{...boxes[active]}};draw();quick.value=boxes[active].text||''}
+  else if(!e.shiftKey&&selectCanvasBox(start))boxDrag={n:active,corner:null,original:{...boxes[active]}};
+  c.setPointerCapture(e.pointerId);
+};
+c.onpointermove=e=>{
+  const p=pos(e);
+  if(start&&!boxDrag){previewPoint=p;draw(false);return}
+  if(!start||!boxDrag){const hit=cornerHit(p);c.style.cursor=hit?(hit.corner==='nw'||hit.corner==='se'?'nwse-resize':'nesw-resize'):'crosshair';return}
+  const b=boxes[boxDrag.n],o=boxDrag.original,corner=boxDrag.corner;
+  if(corner){
+    if(corner.endsWith('w'))b.x1=Math.min(p[0],o.x2-1);else b.x2=Math.max(p[0],o.x1+1);
+    if(corner.startsWith('n'))b.y1=Math.min(p[1],o.y2-1);else b.y2=Math.max(p[1],o.y1+1);
+  }else{
+    const dx=Math.max(-o.x1,Math.min(c.width-o.x2,p[0]-start[0])),dy=Math.max(-o.y1,Math.min(c.height-o.y2,p[1]-start[1]));
+    b.x1=o.x1+dx;b.x2=o.x2+dx;b.y1=o.y1+dy;b.y2=o.y2+dy;
+  }
+  b.source='human';b.confidence=null;c.style.cursor=corner?'crosshair':'grabbing';draw(false);
+};
+c.onpointerup=e=>{
+  if(boxDrag){c.onpointermove(e);const original=boxDrag.original,b=boxes[boxDrag.n],changed=['x1','y1','x2','y2'].some(key=>b[key]!==original[key]);boxDrag=null;start=null;previewPoint=null;draw();quick.focus();quick.select();if(changed)save();return}
+  if(!start)return;const p=pos(e),origin=start;start=null;previewPoint=null;
+  const distance=Math.hypot(e.clientX-pointerOrigin[0],e.clientY-pointerOrigin[1]);
+  if(distance<=5){selectCanvasBox(p);draw(false);return}
+  const b={x1:Math.min(origin[0],p[0]),y1:Math.min(origin[1],p[1]),x2:Math.max(origin[0],p[0]),y2:Math.max(origin[1],p[1]),text:quick.value.trim().toUpperCase()||activeCode,role:'personnel_code',source:'human',confidence:null};
+  if(b.x2>b.x1&&b.y2>b.y1){boxes.push(b);active=boxes.length-1;draw();syncQuick();quick.focus();quick.select();save()}else draw(false);
+};
+c.onpointercancel=()=>{if(boxDrag)Object.assign(boxes[boxDrag.n],boxDrag.original);boxDrag=null;start=null;previewPoint=null;draw()};
+window.addEventListener('pointerup',e=>{if(start)c.onpointerup(e)});
+window.addEventListener('pointermove',e=>{if(start&&e.target!==c)c.onpointermove(e)});
+quick.addEventListener('input',()=>{
+  if(active<0||!boxes[active])return;
+  const value=quick.value.trim().toUpperCase(),b=boxes[active];
+  b.text=value;b.role=value?'personnel_code':'unknown';b.source='human';b.confidence=null;draw();
+});
+async function save(){
+  if(!rows.length)return;
+  if(quick.value.trim())applyQuick();
+  const r=rows[i],annotations=boxes.map(b=>({...b}));
+  try{
+    const response=await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sample_id:r.sample_id,annotations,reviewed:true})}),data=await response.json();
+    if(!response.ok){alert(data.error);return false}
+    r.annotations=annotations.map(b=>({box:{x1:b.x1,y1:b.y1,x2:b.x2,y2:b.y2},text:b.text,role:b.role,source:'human',confidence:null}));r.reviewed=true;
+    if(rows[i]===r)document.querySelector('#status').textContent='已儲存';
+    return true;
+  }catch(error){alert('儲存失敗：'+error.message);return false}
+}
+let codeSaveTimer=null,codeSavePending=null,codeNeedsSave=false;
+async function flushCodeSave(){
+  clearTimeout(codeSaveTimer);codeSaveTimer=null;
+  if(codeSavePending){const ok=await codeSavePending;if(!ok)return false}
+  if(!codeNeedsSave)return true;
+  codeNeedsSave=false;const pending=save();codeSavePending=pending;
+  const ok=await pending;if(codeSavePending===pending)codeSavePending=null;
+  if(!ok)codeNeedsSave=true;return ok;
+}
+function scheduleCodeSave(e){
+  codeNeedsSave=true;clearTimeout(codeSaveTimer);
+  if(e.isComposing)return;
+  codeSaveTimer=setTimeout(flushCodeSave,500);
+}
+quick.addEventListener('input',scheduleCodeSave);
+quick.addEventListener('compositionend',scheduleCodeSave);
+document.querySelector('#list').addEventListener('input',e=>{if(e.target.matches('input'))scheduleCodeSave(e)});
+document.querySelector('#list').addEventListener('compositionend',scheduleCodeSave);
+async function reload(){let f=document.querySelector('#filter').value;rows=await fetch('/api/rows?filter='+f).then(r=>r.json());i=0;load()}
+quick.oninput=()=>{let v=quick.value.trim().toUpperCase();if(v)activeCode=v};quick.onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();save()}else if(e.key==='Escape')quick.blur()};document.querySelector('#applyCode').onclick=()=>{applyQuick();quick.focus();quick.select()};document.querySelector('#save').onclick=save;document.querySelector('#empty').onclick=()=>{boxes=[];quick.value='';save()};document.querySelector('#prev').onclick=()=>{i=Math.max(0,i-1);load()};document.querySelector('#next').onclick=()=>{i=Math.min(rows.length-1,i+1);load()};document.querySelector('#reload').onclick=reload;document.querySelector('#bulk').onclick=async()=>{if(!confirm('接受所有信心至少 95% 且代號有效的自動建議？'))return;let r=await fetch('/api/accept-confident',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({minimum_confidence:.95})}).then(r=>r.json());alert(`已接受 ${r.accepted} 格`);reload()};document.querySelector('#search').oninput=renderPeople;
+// Capture navigation before focused code inputs consume the arrow keys.
+function clearCurrent(){boxes=[];active=-1;start=null;quick.value='';draw();quick.focus()}
+function markEmpty(){clearCurrent();return save()}
+document.querySelector('#empty').onclick=markEmpty;
+const clearButton=document.createElement('button');clearButton.textContent='清除本格全部框';clearButton.title='Ctrl / Cmd + Backspace（不儲存）';clearButton.onclick=clearCurrent;document.querySelector('#empty').before(clearButton);
+document.querySelector('#empty').textContent='空白 e';
+quick.onkeydown=e=>{if(e.key==='Escape')quick.blur()};
+document.querySelector('#save').textContent='儲存本格 Enter';
+document.querySelector('.quick-label small').textContent='點框後輸入代號，Enter 儲存本格並留在原頁；Tab 只換下一張，不儲存。';
+document.querySelector('.hint').innerHTML='<span class="kbd">Enter</span> 儲存本格、不換頁<br><span class="kbd">Tab</span> 下一張、不儲存　<span class="kbd">Shift + Tab</span> 上一張<br><span class="kbd">e</span> 空白並儲存（大寫 E 為代號）<br><span class="kbd">← →</span> 前後（代號欄也適用）<br><span class="kbd">Ctrl / Cmd + Backspace</span> 清除本格全部框、不儲存<br><span class="kbd">Delete</span> 刪框（輸入欄外）';
+document.addEventListener('keydown',e=>{
+  if(e.isComposing||e.keyCode===229)return;
+  const editing=e.target.matches('input,textarea,select,[contenteditable="true"]');
+  const codeInput=e.target===quick||e.target.matches('#list input');
+  const command=e.ctrlKey||e.metaKey;
+  let action=null;
+  if(command&&e.key==='Backspace'&&!e.altKey)action=clearCurrent;
+  else if(command||e.altKey)return;
+  else if(e.key==='Tab')action=async()=>{if(!await flushCodeSave())return;i=Math.max(0,Math.min(rows.length-1,i+(e.shiftKey?-1:1)));load()};
+  else if(e.key==='Enter'&&(!editing||codeInput))action=save;
+  else if((!editing||codeInput)&&e.key==='ArrowLeft')action=()=>{i=Math.max(0,i-1);load()};
+  else if((!editing||codeInput)&&e.key==='ArrowRight')action=()=>{i=Math.min(rows.length-1,i+1);load()};
+  else if((!editing||codeInput)&&e.key==='e')action=markEmpty;
+  else if(editing)return;
+  else if(/^\d$/.test(e.key))action=()=>{quick.focus();quick.value=e.key;quick.dispatchEvent(new Event('input'))};
+  else if(e.key==='Delete'&&active>=0)action=()=>{boxes.splice(active,1);active=-1;draw();syncQuick()};
+  else if(e.key.toLowerCase()==='s')action=()=>{i=Math.min(rows.length-1,i+1);load()};
+  else if(e.key.toLowerCase()==='a')action=save;
+  if(action){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)action()}
+},true);
+Promise.all([fetch('/api/codes').then(r=>r.json()),reload()]).then(v=>{codes=v[0];renderPeople()});
+</script></html>

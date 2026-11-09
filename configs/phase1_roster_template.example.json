@@ -1,0 +1,12 @@
+{
+  "output_width": 2400,
+  "output_height": 1600,
+  "use_original_image": false,
+  "preserve_source_aspect_ratio": false,
+  "minimum_grid_alignment_score": 0.0,
+  "table_corners": null,
+  "grid_x": [],
+  "grid_y": [],
+  "row_map": {},
+  "column_map": {}
+}

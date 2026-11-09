@@ -1,0 +1,23 @@
+.env
+.venv/
+__pycache__/
+data/
+frontend/node_modules/
+models/*-predictions.csv
+models/all_staff/*.pt
+models/all_staff/*.json
+models/all_staff/**/*.pt
+models/all_staff/**/*.json
+configs/all_staff_roster.local.json
+reports/
+
+# 真實名冊、幹部、照片與模型不進版控
+configs/staff_names.txt
+configs/officers.json
+configs/fixed_staff_codes.json
+configs/*.local.json
+models/
+assets/test_fixtures/
+tests/fixtures/
+*.jpg
+.DS_Store

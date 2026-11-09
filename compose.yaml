@@ -1,0 +1,51 @@
+services:
+  work-schedule-discord:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+  work-schedule-line:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["conda", "run", "--no-capture-output", "--name", "work", "python", "line_bot.py"]
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    # Only the Cloudflare Tunnel service needs to reach the webhook.  Do not
+    # expose this port on the Linux host.
+    expose:
+      - "8080"
+    restart: unless-stopped
+  # V2 全員班表機器人：獨立的 LINE 官方帳號（LINE_V2_* 變數），同一個 Cloudflare Tunnel
+  # 另開一個 Public Hostname 指到 http://work-schedule-line-v2:8081。
+  work-schedule-line-v2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["conda", "run", "--no-capture-output", "--name", "work", "python", "-m", "all_staff.cli", "line-bot", "--port", "8081"]
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data                             # data/line_v2：綁定資料庫與每次辨識紀錄
+      - ./models/all_staff:/app/models/all_staff:ro  # 模型不進 git；換模型只要重啟，不用重建
+    expose:
+      - "8081"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/line/health', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "run", "--token", "${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env}"]
+    depends_on:
+      - work-schedule-line
+    restart: unless-stopped
